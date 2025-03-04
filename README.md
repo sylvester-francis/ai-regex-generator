@@ -2,8 +2,6 @@
 
 An AI-powered regular expression generator built with FastAPI that helps you create, test, and manage complex regex patterns with ease.
 
-![AI Regex Generator Screenshot](app/static/img/screenshot.png)
-
 ## Features
 
 - **AI-Powered Generation**: Describe what you need and let AI create the perfect regex pattern
@@ -31,7 +29,7 @@ An AI-powered regular expression generator built with FastAPI that helps you cre
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/ai-regex-generator.git
+   git clone https://github.com/sylvester-francis/ai-regex-generator.git
    cd ai-regex-generator
    ```
 
@@ -51,10 +49,7 @@ An AI-powered regular expression generator built with FastAPI that helps you cre
    cp .env.example .env
    ```
 
-5. Edit the `.env` file and add your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your-openai-api-key-here
-   ```
+5. Configure your `.env` file (see [Environment Configuration](#environment-configuration) section below)
 
 ### Running the Application
 
@@ -69,7 +64,7 @@ An AI-powered regular expression generator built with FastAPI that helps you cre
 
 1. Make sure you have Docker and Docker Compose installed.
 
-2. Create a `.env` file with your OpenAI API key as described above.
+2. Create a `.env` file with your configuration as described in the [Environment Configuration](#environment-configuration) section.
 
 3. Build and start the containers:
    ```bash
@@ -77,6 +72,72 @@ An AI-powered regular expression generator built with FastAPI that helps you cre
    ```
 
 4. The application will be available at [http://localhost:8000](http://localhost:8000)
+
+## Environment Configuration
+
+The application uses a `.env` file for configuration, which should be placed in the project root directory.
+
+### Required Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | Your OpenAI API key for AI generation capability | None (must be provided) |
+
+### Database Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | Database connection string | `sqlite+aiosqlite:///./regex_generator.db` |
+
+Database URL format examples:
+- SQLite: `sqlite+aiosqlite:///./regex_generator.db`
+- PostgreSQL: `postgresql+asyncpg://user:password@localhost:5432/regex_generator`
+- MySQL: `mysql+aiomysql://user:password@localhost:3306/regex_generator`
+
+### Application Settings
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEBUG` | Enable debug mode | `True` |
+| `HOST` | Host to bind the server | `0.0.0.0` |
+| `PORT` | Port to bind the server | `8000` |
+| `SECRET_KEY` | Secret key for security | `change-this-to-a-secure-random-key-in-production` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) | `INFO` |
+| `MAX_REQUESTS_PER_MINUTE` | Rate limiting for API requests | `60` |
+| `OPENAI_MODEL` | OpenAI model to use | `gpt-3.5-turbo` |
+| `API_TIMEOUT` | Timeout for API requests (seconds) | `30` |
+
+### Sample `.env` File
+
+```bash
+# Required: Your OpenAI API key
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Database connection (SQLite by default)
+DATABASE_URL=sqlite+aiosqlite:///./regex_generator.db
+
+# Application settings
+DEBUG=True
+HOST=0.0.0.0
+PORT=8000
+LOG_LEVEL=INFO
+
+# Security settings
+SECRET_KEY=change-this-to-a-secure-random-key-in-production
+```
+
+### Production Recommendations
+
+For production deployments:
+
+1. Set `DEBUG=False` to disable debug mode
+2. Generate a secure random key for `SECRET_KEY`:
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+3. Use a production-ready database like PostgreSQL
+4. Configure appropriate rate limiting
+5. Never commit your `.env` file to version control (it's already in `.gitignore`)
 
 ## Usage Guide
 
