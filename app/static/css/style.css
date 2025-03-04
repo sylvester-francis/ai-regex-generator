@@ -1,0 +1,217 @@
+/**
+ * Custom styles for the AI Regex Generator app
+ */
+
+/* Main container styles */
+.container {
+    max-width: 1200px;
+}
+
+/* Card styles */
+.card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1rem;
+    font-weight: 500;
+}
+
+/* Form styles */
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+textarea.form-control {
+    min-height: 100px;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 4px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+.btn-primary:hover {
+    background-color: #0062cc;
+    border-color: #005cbf;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+/* Code and pattern display */
+code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    color: #e83e8c;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.pattern-display {
+    font-family: monospace;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 1rem;
+}
+
+/* Results display */
+.match-highlight {
+    background-color: #28a74540;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+}
+
+.group-highlight {
+    background-color: #f0ad4e40;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+    position: relative;
+}
+
+/* Test results */
+.test-results {
+    margin: 1.5rem 0;
+}
+
+.test-case {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.test-case.success {
+    border-left: 4px solid #28a745;
+}
+
+.test-case.failure {
+    border-left: 4px solid #dc3545;
+}
+
+/* Flags display */
+.flags-group {
+    margin-bottom: 1rem;
+}
+
+.flag-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem;
+    background-color: #6c757d;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .btn-group .btn {
+        width: auto;
+    }
+}
+
+/* Home page specific styles */
+.jumbotron {
+    background: linear-gradient(135deg, #6f5499, #7952b3);
+    color: white;
+    margin-bottom: 0;
+    border-radius: 0;
+    padding: 4rem 2rem;
+}
+
+.feature-box {
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.feature-box:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #7952b3;
+}
+
+/* Pattern detail page */
+.match-table {
+    font-family: monospace;
+}
+
+.nav-tabs .nav-link {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+.tab-content {
+    border: 1px solid #dee2e6;
+    border-top: none;
+    padding: 1rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    body.dark-mode {
+        background-color: #121212;
+        color: #f8f9fa;
+    }
+    
+    body.dark-mode .card {
+        background-color: #1e1e1e;
+        border-color: #333;
+    }
+    
+    body.dark-mode .card-header {
+        background-color: #333;
+        border-color: #444;
+    }
+    
+    body.dark-mode .form-control {
+        background-color: #2a2a2a;
+        border-color: #444;
+        color: #f8f9fa;
+    }
+    
+    body.dark-mode code {
+        background-color: #333;
+        color: #ff79c6;
+    }
+}
