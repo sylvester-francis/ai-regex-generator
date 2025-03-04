@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 text-center mb-4">
+            <h1>AI-Powered Regex Generator</h1>
+            <p class="lead">Describe what you need, provide sample text, and let AI create the perfect regex pattern</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Generate Regex</h4>
+                </div>
+                <div class="card-body">
+                    <form id="regex-generator-form">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="{{ form.description.id_for_label }}">{{ form.description.label_tag }}</label>
+                            {{ form.description }}
+                            <small class="form-text text-muted">Describe what you want the regex to match or extract</small>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.sample_text.id_for_label }}">{{ form.sample_text.label_tag }}</label>
+                            {{ form.sample_text }}
+                            <small class="form-text text-muted">Provide sample text containing examples of what you want to match</small>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="{{ form.expected_matches.id_for_label }}">{{ form.expected_matches.label_tag }}</label>
+                            {{ form.expected_matches }}
+                            <small class="form-text text-muted">Optional: Specify exactly what parts should be matched (one per line)</small>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                                <span class="generate-btn-text">Generate Regex</span>
+                                <span class="generating-spinner d-none">
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results card - hidden by default -->
+            <div class="card mt-4 d-none" id="results-card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Generated Regex Pattern</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Pattern:</strong></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="result-pattern" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copy-pattern-btn">
+                                <i class="glyphicon glyphicon-copy"></i>
+                            </button>
+                        </div>
+                        <small class="form-text text-muted" id="result-flags"></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Explanation:</strong></label>
+                        <div class="card bg-light">
+                            <div class="card-body" id="result-explanation"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Test Results:</strong></label>
+                        <div id="test-results-container">
+                            <p>Matches found: <span id="match-count">0</span></p>
+                            <div id="match-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="#" class="btn btn-primary" id="view-pattern-btn">View Pattern Details</a>
+                        <button type="button" class="btn btn-secondary" id="test-new-btn">Test Different Text</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Recent Patterns</h4>
+                </div>
+                <div class="card-body">
+                    {% if recent_patterns %}
+                        <div class="list-group">
+                            {% for pattern in recent_patterns %}
+                                <a href="{% url 'pattern_detail' pattern.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ pattern.name }}</h5>
+                                        <small>{{ pattern.created_at|timesince }} ago</small>
+                                    </div>
+                                    <p class="mb-1"><code>{{ pattern.pattern }}</code></p>
+                                    <small>{{ pattern.description|truncatechars:100 }}</small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center">No patterns generated yet. Try creating your first one!</p>
+                    {% endif %}
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'pattern_list' %}" class="btn btn-outline-info">View All Patterns</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('regex-generator-form');
+        const resultsCard = document.getElementById('results-card');
+        const generateBtn = document.getElementById('generate-btn');
+        const generateBtnText = document.querySelector('.generate-btn-text');
+        const generatingSpinner = document.querySelector('.generating-spinner');
+        const resultPattern = document.getElementById('result-pattern');
+        const resultFlags = document.getElementById('result-flags');
+        const resultExplanation = document.getElementById('result-explanation');
+        const matchCount = document.getElementById('match-count');
+        const matchList = document.getElementById('match-list');
+        const viewPatternBtn = document.getElementById('view-pattern-btn');
+        const copyPatternBtn = document.getElementById('copy-pattern-btn');
+        
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            generateBtnText.classList.add('d-none');
+            generatingSpinner.classList.remove('d-none');
+            generateBtn.disabled = true;
+            
+            // Get form data
+            const description = document.getElementById('{{ form.description.id_for_label }}').value;
+            const sampleText = document.getElementById('{{ form.sample_text.id_for_label }}').value;
+            const expectedMatches = document.getElementById('{{ form.expected_matches.id_for_label }}').value;
+            
+            // Send request to generate regex
+            fetch('{% url "generate_regex" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    description: description,
+                    sample_text: sampleText,
+                    expected_matches: expectedMatches
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update results
+                    resultPattern.value = data.pattern;
+                    resultExplanation.innerHTML = data.explanation.replace(/\n/g, '<br>');
+                    if (data.flags) {
+                        resultFlags.textContent = `Flags: ${data.flags}`;
+                    } else {
+                        resultFlags.textContent = '';
+                    }
+                    
+                    // Update test results
+                    const testResult = data.test_result;
+                    if (testResult.success) {
+                        matchCount.textContent = testResult.match_count;
+                        
+                        // Clear previous matches
+                        matchList.innerHTML = '';
+                        
+                        // Add match information
+                        if (testResult.match_count > 0) {
+                            const matchesTable = document.createElement('table');
+                            matchesTable.className = 'table table-striped';
+                            
+                            // Create table header
+                            const thead = document.createElement('thead');
+                            const headerRow = document.createElement('tr');
+                            ['Match', 'Position', 'Groups'].forEach(text => {
+                                const th = document.createElement('th');
+                                th.textContent = text;
+                                headerRow.appendChild(th);
+                            });
+                            thead.appendChild(headerRow);
+                            matchesTable.appendChild(thead);
+                            
+                            // Create table body
+                            const tbody = document.createElement('tbody');
+                            testResult.matches.forEach((match, index) => {
+                                const row = document.createElement('tr');
+                                
+                                // Match cell
+                                const matchCell = document.createElement('td');
+                                const matchCode = document.createElement('code');
+                                matchCode.textContent = match.full_match;
+                                matchCell.appendChild(matchCode);
+                                row.appendChild(matchCell);
+                                
+                                // Position cell
+                                const posCell = document.createElement('td');
+                                posCell.textContent = `${match.start}-${match.end}`;
+                                row.appendChild(posCell);
+                                
+                                // Groups cell
+                                const groupsCell = document.createElement('td');
+                                if (match.groups.length > 0) {
+                                    const groupsList = document.createElement('ul');
+                                    match.groups.forEach(group => {
+                                        const groupItem = document.createElement('li');
+                                        groupItem.innerHTML = `Group ${group.group_num}: <code>${group.content}</code>`;
+                                        groupsList.appendChild(groupItem);
+                                    });
+                                    groupsCell.appendChild(groupsList);
+                                } else {
+                                    groupsCell.textContent = 'No groups';
+                                }
+                                row.appendChild(groupsCell);
+                                
+                                tbody.appendChild(row);
+                            });
+                            matchesTable.appendChild(tbody);
+                            matchList.appendChild(matchesTable);
+                        } else {
+                            matchList.innerHTML = '<div class="alert alert-warning">No matches found in the sample text.</div>';
+                        }
+                    } else {
+                        matchCount.textContent = '0';
+                        matchList.innerHTML = `<div class="alert alert-danger">Error testing pattern: ${testResult.error}</div>`;
+                    }
+                    
+                    // Update view button link
+                    viewPatternBtn.href = `/regex/pattern/${data.pattern_id}/`;
+                    
+                    // Show results card
+                    resultsCard.classList.remove('d-none');
+                    
+                    // Scroll to results
+                    resultsCard.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    // Show error
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            })
+            .finally(() => {
+                // Reset button state
+                generateBtnText.classList.remove('d-none');
+                generatingSpinner.classList.add('d-none');
+                generateBtn.disabled = false;
+            });
+        });
+        
+        // Copy pattern button
+        copyPatternBtn.addEventListener('click', function() {
+            resultPattern.select();
+            document.execCommand('copy');
+            
+            // Show copied message
+            const originalText = copyPatternBtn.innerHTML;
+            copyPatternBtn.innerHTML = '<i class="glyphicon glyphicon-ok"></i>';
+            setTimeout(() => {
+                copyPatternBtn.innerHTML = originalText;
+            }, 2000);
+        });
+        
+        // Test new button
+        document.getElementById('test-new-btn').addEventListener('click', function() {
+            const pattern = resultPattern.value;
+            const flags = resultFlags.textContent.replace('Flags: ', '');
+            
+            // Create a modal for testing
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'test-modal';
+            modal.setAttribute('tabindex', '-1');
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Test Regex</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Pattern:</label>
+                                <input type="text" class="form-control" id="test-pattern" value="${pattern}" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Test Text:</label>
+                                <textarea class="form-control" id="test-text" rows="5"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Flags:</label>
+                                <input type="text" class="form-control" id="test-flags" value="${flags}">
+                                <small class="form-text text-muted">i = case insensitive, m = multiline, s = dot matches newline, x = verbose</small>
+                            </div>
+                            <div id="test-results"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="run-test-btn">Run Test</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Show the modal
+            $(modal).modal('show');
+            
+            // Handle test button click
+            document.getElementById('run-test-btn').addEventListener('click', function() {
+                const testPattern = document.getElementById('test-pattern').value;
+                const testText = document.getElementById('test-text').value;
+                const testFlags = document.getElementById('test-flags').value;
+                const testResults = document.getElementById('test-results');
+                
+                // Show loading
+                testResults.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+                
+                // Send test request
+                fetch('{% url "test_regex" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        pattern: testPattern,
+                        test_text: testText,
+                        flags: testFlags
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const result = data.result;
+                        if (result.success) {
+                            testResults.innerHTML = `<div class="alert alert-info">Matches found: ${result.match_count}</div>`;
+                            
+                            if (result.match_count > 0) {
+                                const matchesTable = document.createElement('table');
+                                matchesTable.className = 'table table-striped';
+                                
+                                // Create table header
+                                const thead = document.createElement('thead');
+                                const headerRow = document.createElement('tr');
+                                ['Match', 'Position', 'Groups'].forEach(text => {
+                                    const th = document.createElement('th');
+                                    th.textContent = text;
+                                    headerRow.appendChild(th);
+                                });
+                                thead.appendChild(headerRow);
+                                matchesTable.appendChild(thead);
+                                
+                                // Create table body
+                                const tbody = document.createElement('tbody');
+                                result.matches.forEach((match, index) => {
+                                    const row = document.createElement('tr');
+                                    
+                                    // Match cell
+                                    const matchCell = document.createElement('td');
+                                    const matchCode = document.createElement('code');
+                                    matchCode.textContent = match.full_match;
+                                    matchCell.appendChild(matchCode);
+                                    row.appendChild(matchCell);
+                                    
+                                    // Position cell
+                                    const posCell = document.createElement('td');
+                                    posCell.textContent = `${match.start}-${match.end}`;
+                                    row.appendChild(posCell);
+                                    
+                                    // Groups cell
+                                    const groupsCell = document.createElement('td');
+                                    if (match.groups.length > 0) {
+                                        const groupsList = document.createElement('ul');
+                                        match.groups.forEach(group => {
+                                            const groupItem = document.createElement('li');
+                                            groupItem.innerHTML = `Group ${group.group_num}: <code>${group.content}</code>`;
+                                            groupsList.appendChild(groupItem);
+                                        });
+                                        groupsCell.appendChild(groupsList);
+                                    } else {
+                                        groupsCell.textContent = 'No groups';
+                                    }
+                                    row.appendChild(groupsCell);
+                                    
+                                    tbody.appendChild(row);
+                                });
+                                matchesTable.appendChild(tbody);
+                                testResults.appendChild(matchesTable);
+                            }
+                        } else {
+                            testResults.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+                        }
+                    } else {
+                        testResults.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+                    }
+                })
+                .catch(error => {
+                    testResults.innerHTML = `<div class="alert alert-danger">Error: ${error}</div>`;
+                });
+            });
+            
+            // Clean up when modal is closed
+            $(modal).on('hidden.bs.modal', function() {
+                modal.remove();
+            });
+        });
+    });
+</script>
+{% endblock %}

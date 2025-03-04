@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 text-center mb-4">
+            <h1>Regex Pattern Library</h1>
+            <p class="lead">Browse all your saved regex patterns</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Saved Patterns</h4>
+                        <a href="{% url 'home' %}" class="btn btn-light btn-sm">
+                            <i class="glyphicon glyphicon-plus"></i> Create New Pattern
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if patterns %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Pattern</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pattern in patterns %}
+                                        <tr>
+                                            <td>{{ pattern.name }}</td>
+                                            <td><code>{{ pattern.pattern }}</code></td>
+                                            <td>{{ pattern.created_at|date:"M d, Y" }}</td>
+                                            <td>
+                                                <a href="{% url 'pattern_detail' pattern.id %}" class="btn btn-sm btn-info">
+                                                    <i class="glyphicon glyphicon-eye-open"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <p class="lead">No saved patterns yet.</p>
+                            <a href="{% url 'home' %}" class="btn btn-primary">
+                                Create Your First Pattern
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
