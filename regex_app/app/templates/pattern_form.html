@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{% if pattern %}Edit{% else %}New{% endif %} Pattern - AI Regex Generator{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/home">Generator</a></li>
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{% if pattern %}Edit{% else %}New{% endif %} Pattern</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{% if pattern %}Edit Pattern{% else %}Create New Pattern{% endif %}</h4>
+                </div>
+                <div class="card-body">
+                    {% if error %}
+                        <div class="alert alert-danger">
+                            {{ error }}
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post" action="{% if pattern %}/patterns/{{ pattern.id }}{% else %}/patterns/new{% endif %}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                value="{% if pattern %}{{ pattern.name }}{% elif form_data %}{{ form_data.name }}{% endif %}"
+                                placeholder="E.g., 'Email Extractor'" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="pattern" class="form-label">Regex Pattern</label>
+                            <input type="text" class="form-control" id="pattern" name="pattern" 
+                                value="{% if pattern %}{{ pattern.pattern }}{% elif form_data %}{{ form_data.pattern }}{% endif %}"
+                                placeholder="Enter regex pattern" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sample_text" class="form-label">Sample Text</label>
+                            <textarea class="form-control" id="sample_text" name="sample_text" 
+                                rows="4" placeholder="Enter sample text to test the pattern">{% if pattern %}{{ pattern.sample_text }}{% elif form_data %}{{ form_data.sample_text }}{% endif %}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                rows="3" placeholder="Enter a description of what this regex does">{% if pattern %}{{ pattern.description }}{% elif form_data %}{{ form_data.description }}{% endif %}</textarea>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="/patterns" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-success">
+                                {% if pattern %}Update{% else %}Create{% endif %} Pattern
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

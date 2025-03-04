@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pattern.name }} - AI Regex Generator{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/home">Generator</a></li>
+                    <li class="breadcrumb-item"><a href="/patterns">Pattern Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ pattern.name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ pattern.name }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Pattern:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="{{ pattern.pattern }}" id="pattern-text" readonly>
+                                <button class="btn btn-outline-secondary" type="button" id="copy-pattern-btn">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Created:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            {{ pattern.created_at.strftime('%B %d, %Y, %I:%M %p') }}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Description:</strong>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    {{ pattern.description|replace('\n', '<br>')|safe if pattern.description else 'No description available.' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test pattern card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Test Pattern</h4>
+                </div>
+                <div class="card-body">
+                    <form id="test-form">
+                        <div class="mb-3">
+                            <label for="regex_pattern" class="form-label">Pattern:</label>
+                            <input type="text" class="form-control" id="regex_pattern" name="regex_pattern" value="{{ pattern.pattern }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="test_text" class="form-label">Test Text:</label>
+                            <textarea class="form-control" id="test_text" name="test_text" rows="5">{{ pattern.sample_text if pattern.sample_text else '' }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Flags:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="flags" value="i" id="flag_i">
+                                <label class="form-check-label" for="flag_i">
+                                    Case insensitive (i)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="flags" value="m" id="flag_m">
+                                <label class="form-check-label" for="flag_m">
+                                    Multi-line (m)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="flags" value="s" id="flag_s">
+                                <label class="form-check-label" for="flag_s">
+                                    Dot matches newline (s)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="flags" value="x" id="flag_x">
+                                <label class="form-check-label" for="flag_x">
+                                    Verbose (x)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" id="run-test-btn">
+                            <span id="test-btn-text">Run Test</span>
+                            <span id="test-spinner" class="d-none">
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Testing...
+                            </span>
+                        </button>
+                    </form>
+                    
+                    <div id="test-results" class="mt-4 d-none">
+                        <h5>Results:</h5>
+                        <div id="test-results-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test cases card -->
+            <div class="card mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Test Cases</h4>
+                </div>
+                <div class="card-body">
+                    {% if pattern.test_cases %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Test Text</th>
+                                        <th>Should Match</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for test_case in pattern.test_cases %}
+                                        <tr>
+                                            <td>{{ test_case.test_text }}</td>
+                                            <td>
+                                                {% if test_case.should_match %}
+                                                    <span class="badge bg-success">Yes</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">No</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary run-test-case-btn" 
+                                                        data-text="{{ test_case.test_text }}">
+                                                    <i class="fas fa-play"></i> Run
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p>No test cases available.</p>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h5>Add New Test Case</h5>
+                    <form method="post" action="/patterns/{{ pattern.id }}/test-cases">
+                        <div class="mb-3">
+                            <label for="test_text" class="form-label">Test Text:</label>
+                            <textarea name="test_text" class="form-control" id="test_text" rows="3" placeholder="Enter test text"></textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="should_match" class="form-check-input" id="should_match" checked>
+                            <label class="form-check-label" for="should_match">Should Match</label>
+                        </div>
+                        <button type="submit" class="btn btn-success">Add Test Case</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy pattern button
+    const copyPatternBtn = document.getElementById('copy-pattern-btn');
+    const patternText = document.getElementById('pattern-text');
+    
+    copyPatternBtn.addEventListener('click', function() {
+        patternText.select();
+        document.execCommand('copy');
+        
+        const originalText = copyPatternBtn.innerHTML;
+        copyPatternBtn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            copyPatternBtn.innerHTML = originalText;
+        }, 2000);
+    });
+    
+    // Test form submission
+    const testForm = document.getElementById('test-form');
+    const runTestBtn = document.getElementById('run-test-btn');
+    const testBtnText = document.getElementById('test-btn-text');
+    const testSpinner = document.getElementById('test-spinner');
+    const testResults = document.getElementById('test-results');
+    const testResultsContent = document.getElementById('test-results-content');
+    
+    testForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        testBtnText.classList.add('d-none');
+        testSpinner.classList.remove('d-none');
+        runTestBtn.disabled = true;
+        
+        try {
+            // Get form data
+            const pattern = document.getElementById('regex_pattern').value;
+            const testText = document.getElementById('test_text').value;
+            
+            // Get selected flags
+            let flags = '';
+            document.querySelectorAll('input[name="flags"]:checked').forEach(checkbox => {
+                flags += checkbox.value;
+            });
+            
+            // Send test request
+            const response = await fetch('/api/regex/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    pattern: pattern,
+                    test_text: testText,
+                    flags: flags
+                })
+            });
+            
+            const data = await response.json();
+            
+            // Show results section
+            testResults.classList.remove('d-none');
+            
+            if (data.status === 'success') {
+                updateTestResultsContent(data.result, testResultsContent);
+            } else {
+                testResultsContent.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            testResults.classList.remove('d-none');
+            testResultsContent.innerHTML = `<div class="alert alert-danger">Error: ${error}</div>`;
+        } finally {
+            // Reset button state
+            testBtnText.classList.remove('d-none');
+            testSpinner.classList.add('d-none');
+            runTestBtn.disabled = false;
+        }
+    });
+    
+    // Run test case buttons
+    document.querySelectorAll('.run-test-case-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const testText = this.getAttribute('data-text');
+            document.getElementById('test_text').value = testText;
+            runTestBtn.click();
+        });
+    });
+    
+    // Helper function to update test results
+    function updateTestResultsContent(result, container) {
+        if (result.success) {
+            container.innerHTML = `<div class="alert alert-info">Matches found: ${result.match_count}</div>`;
+            
+            if (result.match_count > 0) {
+                const matchesTable = document.createElement('table');
+                matchesTable.className = 'table table-striped';
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                ['Match', 'Position', 'Groups'].forEach(text => {
+                    const th = document.createElement('th');
+                    th.textContent = text;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                matchesTable.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
+                result.matches.forEach((match, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // Match cell
+                    const matchCell = document.createElement('td');
+                    const matchCode = document.createElement('code');
+                    matchCode.textContent = match.full_match;
+                    matchCell.appendChild(matchCode);
+                    row.appendChild(matchCell);
+                    
+                    // Position cell
+                    const posCell = document.createElement('td');
+                    posCell.textContent = `${match.start}-${match.end}`;
+                    row.appendChild(posCell);
+                    
+                    // Groups cell
+                    const groupsCell = document.createElement('td');
+                    if (match.groups && match.groups.length > 0) {
+                        const groupsList = document.createElement('ul');
+                        match.groups.forEach(group => {
+                            const groupItem = document.createElement('li');
+                            groupItem.innerHTML = `Group ${group.group_num}: <code>${group.content}</code>`;
+                            groupsList.appendChild(groupItem);
+                        });
+                        groupsCell.appendChild(groupsList);
+                    } else {
+                        groupsCell.textContent = 'No groups';
+                    }
+                    row.appendChild(groupsCell);
+                    
+                    tbody.appendChild(row);
+                });
+                matchesTable.appendChild(tbody);
+                container.appendChild(matchesTable);
+            }
+        } else {
+            container.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+        }
+    }
+});
+</script>
+{% endblock %}

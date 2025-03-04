@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+
+{% block title %}AI Regex Generator - Home{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 text-center mb-4">
+            <h1>AI-Powered Regex Generator</h1>
+            <p class="lead">Describe what you need, provide sample text, and let AI create the perfect regex pattern</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Generate Regex</h4>
+                </div>
+                <div class="card-body">
+                    <form id="regex-generator-form">
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" name="description" class="form-control" rows="3" 
+                                placeholder="E.g., &quot;I need a regex to extract email addresses from text&quot;" required></textarea>
+                            <div class="form-text">Describe what you want the regex to match or extract</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sample_text" class="form-label">Sample Text</label>
+                            <textarea id="sample_text" name="sample_text" class="form-control" rows="5" 
+                                placeholder="Enter sample text containing examples you want to match" required></textarea>
+                            <div class="form-text">Provide sample text containing examples of what you want to match</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="expected_matches" class="form-label">Expected Matches (Optional)</label>
+                            <textarea id="expected_matches" name="expected_matches" class="form-control" rows="3" 
+                                placeholder="Enter specific parts of the sample text that should be matched (one per line)"></textarea>
+                            <div class="form-text">Optional: Specify exactly what parts should be matched (one per line)</div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                                <span class="generate-btn-text">Generate Regex</span>
+                                <span class="generating-spinner d-none">
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    Generating...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results card - hidden by default -->
+            <div class="card mt-4 d-none" id="results-card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Generated Regex Pattern</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Pattern:</strong></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="result-pattern" readonly>
+                            <button class="btn btn-outline-secondary" type="button" id="copy-pattern-btn">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <small class="form-text text-muted" id="result-flags"></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Explanation:</strong></label>
+                        <div class="card bg-light">
+                            <div class="card-body" id="result-explanation"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Test Results:</strong></label>
+                        <div id="test-results-container">
+                            <p>Matches found: <span id="match-count">0</span></p>
+                            <div id="match-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="#" class="btn btn-primary" id="view-pattern-btn">View Pattern Details</a>
+                        <button type="button" class="btn btn-secondary" id="test-new-btn">Test Different Text</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Recent Patterns</h4>
+                </div>
+                <div class="card-body">
+                    {% if recent_patterns %}
+                        <div class="list-group">
+                            {% for pattern in recent_patterns %}
+                                <a href="/patterns/{{ pattern.id }}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ pattern.name }}</h5>
+                                        <small>{{ pattern.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    </div>
+                                    <p class="mb-1"><code>{{ pattern.pattern }}</code></p>
+                                    <small>{{ pattern.description[:100] }}{% if pattern.description|length > 100 %}...{% endif %}</small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center">No patterns generated yet. Try creating your first one!</p>
+                    {% endif %}
+                    
+                    <div class="text-center mt-3">
+                        <a href="/patterns" class="btn btn-outline-info">View All Patterns</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('regex-generator-form');
+    const resultsCard = document.getElementById('results-card');
+    const generateBtn = document.getElementById('generate-btn');
+    const generateBtnText = document.querySelector('.generate-btn-text');
+    const generatingSpinner = document.querySelector('.generating-spinner');
+    const resultPattern = document.getElementById('result-pattern');
+    const resultFlags = document.getElementById('result-flags');
+    const resultExplanation = document.getElementById('result-explanation');
+    const matchCount = document.getElementById('match-count');
+    const matchList = document.getElementById('match-list');
+    const viewPatternBtn = document.getElementById('view-pattern-btn');
+    const copyPatternBtn = document.getElementById('copy-pattern-btn');
+    
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        generateBtnText.classList.add('d-none');
+        generatingSpinner.classList.remove('d-none');
+        generateBtn.disabled = true;
+        
+        try {
+            // Get form data
+            const formData = new FormData(form);
+            const data = {
+                description: formData.get('description'),
+                sample_text: formData.get('sample_text'),
+                expected_matches: formData.get('expected_matches')
+            };
+            
+            // Send request to generate regex
+            const response = await fetch('/api/regex/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const responseData = await response.json();
+            
+            if (responseData.status === 'success') {
+                // Update results
+                resultPattern.value = responseData.pattern;
+                resultExplanation.innerHTML = responseData.explanation.replace(/\n/g, '<br>');
+                
+                if (responseData.flags) {
+                    resultFlags.textContent = `Flags: ${responseData.flags}`;
+                } else {
+                    resultFlags.textContent = '';
+                }
+                
+                // Update test results
+                updateTestResults(responseData.test_result);
+                
+                // Update view button link
+                viewPatternBtn.href = `/patterns/${responseData.pattern_id}`;
+                
+                // Show results card
+                resultsCard.classList.remove('d-none');
+                
+                // Scroll to results
+                resultsCard.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // Show error
+                alert('Error: ' + responseData.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error: ' + error);
+        } finally {
+            // Reset button state
+            generateBtnText.classList.remove('d-none');
+            generatingSpinner.classList.add('d-none');
+            generateBtn.disabled = false;
+        }
+    });
+    
+    // Copy pattern button
+    copyPatternBtn.addEventListener('click', function() {
+        resultPattern.select();
+        document.execCommand('copy');
+        
+        // Show copied message
+        const originalText = copyPatternBtn.innerHTML;
+        copyPatternBtn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            copyPatternBtn.innerHTML = originalText;
+        }, 2000);
+    });
+    
+    // Test new button
+    document.getElementById('test-new-btn').addEventListener('click', function() {
+        const pattern = resultPattern.value;
+        const flags = resultFlags.textContent.replace('Flags: ', '');
+        
+        // Create a modal for testing
+        const modalHTML = `
+            <div class="modal fade" id="test-modal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Test Regex</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label>Pattern:</label>
+                                <input type="text" class="form-control" id="test-pattern" value="${pattern}" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label>Test Text:</label>
+                                <textarea class="form-control" id="test-text" rows="5"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label>Flags:</label>
+                                <input type="text" class="form-control" id="test-flags" value="${flags}">
+                                <small class="form-text text-muted">i = case insensitive, m = multiline, s = dot matches newline, x = verbose</small>
+                            </div>
+                            <div id="test-results"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="run-test-btn">Run Test</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Get modal element
+        const modalElement = document.getElementById('test-modal');
+        
+        // Create modal instance
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // Show the modal
+        modal.show();
+        
+        // Handle test button click
+        document.getElementById('run-test-btn').addEventListener('click', async function() {
+            const testPattern = document.getElementById('test-pattern').value;
+            const testText = document.getElementById('test-text').value;
+            const testFlags = document.getElementById('test-flags').value;
+            const testResults = document.getElementById('test-results');
+            
+            // Show loading
+            testResults.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div></div>';
+            
+            try {
+                // Send test request
+                const response = await fetch('/api/regex/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pattern: testPattern,
+                        test_text: testText,
+                        flags: testFlags
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateTestResultsContent(data.result, testResults);
+                } else {
+                    testResults.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                testResults.innerHTML = `<div class="alert alert-danger">Error: ${error}</div>`;
+            }
+        });
+        
+        // Clean up when modal is hidden
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            modalElement.remove();
+        });
+    });
+    
+    // Helper functions
+    function updateTestResults(testResult) {
+        if (!matchCount || !matchList) {
+            return;
+        }
+        
+        if (testResult.success) {
+            matchCount.textContent = testResult.match_count;
+            
+            // Clear previous matches
+            matchList.innerHTML = '';
+            
+            // Add match information
+            if (testResult.match_count > 0) {
+                const matchesTable = createMatchesTable(testResult.matches);
+                matchList.appendChild(matchesTable);
+            } else {
+                matchList.innerHTML = '<div class="alert alert-warning">No matches found in the sample text.</div>';
+            }
+        } else {
+            matchCount.textContent = '0';
+            matchList.innerHTML = `<div class="alert alert-danger">Error testing pattern: ${testResult.error}</div>`;
+        }
+    }
+    
+    function updateTestResultsContent(result, container) {
+        if (result.success) {
+            container.innerHTML = `<div class="alert alert-info">Matches found: ${result.match_count}</div>`;
+            
+            if (result.match_count > 0) {
+                const matchesTable = createMatchesTable(result.matches);
+                container.appendChild(matchesTable);
+            }
+        } else {
+            container.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+        }
+    }
+    
+    function createMatchesTable(matches) {
+        const matchesTable = document.createElement('table');
+        matchesTable.className = 'table table-striped';
+        
+        // Create table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Match', 'Position', 'Groups'].forEach(text => {
+            const th = document.createElement('th');
+            th.textContent = text;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        matchesTable.appendChild(thead);
+        
+        // Create table body
+        const tbody = document.createElement('tbody');
+        matches.forEach((match, index) => {
+            const row = document.createElement('tr');
+            
+            // Match cell
+            const matchCell = document.createElement('td');
+            const matchCode = document.createElement('code');
+            matchCode.textContent = match.full_match;
+            matchCell.appendChild(matchCode);
+            row.appendChild(matchCell);
+            
+            // Position cell
+            const posCell = document.createElement('td');
+            posCell.textContent = `${match.start}-${match.end}`;
+            row.appendChild(posCell);
+            
+            // Groups cell
+            const groupsCell = document.createElement('td');
+            if (match.groups && match.groups.length > 0) {
+                const groupsList = document.createElement('ul');
+                match.groups.forEach(group => {
+                    const groupItem = document.createElement('li');
+                    groupItem.innerHTML = `Group ${group.group_num}: <code>${group.content}</code>`;
+                    groupsList.appendChild(groupItem);
+                });
+                groupsCell.appendChild(groupsList);
+            } else {
+                groupsCell.textContent = 'No groups';
+            }
+            row.appendChild(groupsCell);
+            
+            tbody.appendChild(row);
+        });
+        matchesTable.appendChild(tbody);
+        
+        return matchesTable;
+    }
+});
+</script>
+{% endblock %}
